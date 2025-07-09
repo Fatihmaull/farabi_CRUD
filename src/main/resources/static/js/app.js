@@ -16,6 +16,7 @@ function loadBuku() {
             <td>${b.pengarang}</td>
             <td>${b.stok}</td>
             <td>
+              <a href="/form-buku.html?id=${b.id}" class="btn btn-warning btn-sm">Edit</a>
               <button class="btn btn-danger btn-sm" onclick="hapusBuku(${b.id})">Hapus</button>
             </td>
           </tr>`;
@@ -33,32 +34,52 @@ function hapusBuku(id) {
 }
 
 // -------------------------
-// Buku - Form Tambah
+// Buku - Form Tambah/Edit
 // -------------------------
 function setupFormBuku() {
   const form = document.querySelector("form#formBuku");
   if (!form) return;
 
+  const params = new URLSearchParams(window.location.search);
+  const id = params.get("id");
+
+  if (id) {
+    // Mode edit - ambil data dari API
+    fetch(`/api/buku`)
+      .then(res => res.json())
+      .then(data => {
+        const buku = data.find(b => b.id == id);
+        if (!buku) return alert("Buku tidak ditemukan");
+
+        form.judul.value = buku.judul;
+        form.pengarang.value = buku.pengarang;
+        form.stok.value = buku.stok;
+      });
+  }
+
   form.addEventListener("submit", function (e) {
     e.preventDefault();
 
-    const formData = {
-      judul: this.judul.value,
-      pengarang: this.pengarang.value,
-      stok: parseInt(this.stok.value)
+    const payload = {
+      judul: form.judul.value,
+      pengarang: form.pengarang.value,
+      stok: parseInt(form.stok.value)
     };
 
-    fetch("/api/buku", {
-      method: "POST",
+    const method = id ? "PUT" : "POST";
+    const url = id ? `/api/buku/${id}` : "/api/buku";
+
+    fetch(url, {
+      method: method,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(formData)
+      body: JSON.stringify(payload)
     })
       .then(res => {
         if (res.ok) {
-          alert("Buku berhasil ditambahkan");
+          alert(`Buku berhasil ${id ? "diperbarui" : "ditambahkan"}`);
           window.location.href = "/buku.html";
         } else {
-          alert("Gagal menyimpan");
+          alert("Gagal menyimpan data");
         }
       });
   });
@@ -107,7 +128,6 @@ function setupFormPeminjaman() {
   const select = document.querySelector("select[name='bukuId']");
   if (!form || !select) return;
 
-  // Isi dropdown buku
   fetch("/api/peminjaman/buku")
     .then(res => res.json())
     .then(data => {
@@ -119,15 +139,14 @@ function setupFormPeminjaman() {
       });
     });
 
-  // Submit form
   form.addEventListener("submit", function (e) {
     e.preventDefault();
 
     const payload = {
-      namaSantri: this.namaSantri.value,
-      buku: { id: parseInt(this.bukuId.value) },
-      tanggalPinjam: this.tanggalPinjam.value,
-      status: this.status.value
+      namaSantri: form.namaSantri.value,
+      buku: { id: parseInt(form.bukuId.value) },
+      tanggalPinjam: form.tanggalPinjam.value,
+      status: form.status.value
     };
 
     fetch("/api/peminjaman", {
